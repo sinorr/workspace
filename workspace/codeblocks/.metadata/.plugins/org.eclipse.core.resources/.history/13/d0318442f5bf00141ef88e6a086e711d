@@ -1,0 +1,7 @@
+package jpolylda;
+
+public class jpolylda{
+	public static void main(String [] args){
+		System.out.println("Hello Eclipse!");
+	}
+}

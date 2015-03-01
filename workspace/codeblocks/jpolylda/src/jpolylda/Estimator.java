@@ -1,0 +1,135 @@
+package jpolylda;
+
+import java.io.File;
+import java.util.Vector;
+
+public class Estimator {
+	
+	// output model
+	protected Model trnModel;
+	LDACmdOption option;
+	
+	public boolean init(LDACmdOption option){
+		this.option = option;
+		trnModel = new Model();
+		
+		if (option.est){
+			if (!trnModel.initNewModel(option))
+				return false;
+			for (int l = 0; l < trnModel.L; l++) {
+				trnModel.data[l].localDict.writeWordMap(option.dir
+						+ File.separator + option.wordMapFileName + '.' + trnModel.langNames[l]);
+			}
+		}
+		else if (option.estc){
+			//if (!trnModel.initEstimatedModel(option))
+				//return false;
+		}
+		
+		return true;
+	}
+	
+	public void estimate(){
+		System.out.println("Sampling " + trnModel.niters + " iteration!");
+		
+		int lastIter = trnModel.liter;
+		for (trnModel.liter = lastIter + 1; trnModel.liter < trnModel.niters + lastIter; trnModel.liter++){
+			System.out.println("Iteration " + trnModel.liter + " ...");
+			
+			// for all z_i
+			for (int l = 0; l < trnModel.L; l++) {
+				for (int m = 0; m < trnModel.M; m++) {
+					for (int n = 0; n < trnModel.data[l].docs[m].length; n++) {
+						// z_i = z[l][m][n]
+						// sample from p(z_i|z_-i, w)
+						int topic = sampling(l, m, n);
+						trnModel.z[l][m].set(n, topic);
+					}// end for each word
+				}// end for each document
+			}// end for each languange
+			if (option.savestep > 0){
+				if (trnModel.liter % option.savestep == 0){
+					System.out.println("Saving the model at iteration " + trnModel.liter + " ...");
+					computeTheta();
+					computePhi();
+					trnModel.saveModel("model-" + Conversion.ZeroPad(trnModel.liter, 5));
+				}
+			}
+		}// end iterations		
+		
+		System.out.println("Gibbs sampling completed!\n");
+		System.out.println("Saving the final model!\n");
+		computeTheta();
+		computePhi();
+		trnModel.liter--;
+		trnModel.saveModel("model-final");
+	}
+	
+	/**
+	 * Do sampling
+	 * @param m document number
+	 * @param n word number
+	 * @return topic id
+	 */
+	public int sampling(int l, int m, int n){
+		// remove z_i from the count variable
+		int topic = trnModel.z[l][m].get(n);
+		int w = trnModel.data[l].docs[m].words[n];
+		
+		trnModel.nw[l][w][topic] -= 1;
+		trnModel.nd[m][topic] -= 1;
+		trnModel.nwsum[l][topic] -= 1;
+		trnModel.ndsum[m] -= 1;
+		
+		double Vbeta = trnModel.V[l] * trnModel.beta;
+		double Kalpha = trnModel.K * trnModel.alpha;
+		
+		//do multinominal sampling via cumulative method
+		for (int k = 0; k < trnModel.K; k++){
+			trnModel.p[l][k] = (trnModel.nw[l][w][k] + trnModel.beta)/(trnModel.nwsum[l][k] + Vbeta) *
+					(trnModel.nd[m][k] + trnModel.alpha)/(trnModel.ndsum[m] + Kalpha);
+		}
+		
+		// cumulate multinomial parameters
+		for (int k = 1; k < trnModel.K; k++){
+			trnModel.p[l][k] += trnModel.p[l][k - 1];
+		}
+		
+		// scaled sample because of unnormalized p[l][]
+		double u = Math.random() * trnModel.p[l][trnModel.K - 1];
+		
+		for (topic = 0; topic < trnModel.K; topic++){
+			if (trnModel.p[l][topic] > u) //sample topic w.r.t distribution p
+				break;
+		}
+		
+		// add newly estimated z_i to count variables
+		trnModel.nw[l][w][topic] += 1;
+		trnModel.nd[m][topic] += 1;
+		trnModel.nwsum[l][topic] += 1;
+		trnModel.ndsum[m] += 1;
+		
+ 		return topic;
+	}
+	
+	public void computeTheta(){
+		for (int m = 0; m < trnModel.M; m++){
+			for (int k = 0; k < trnModel.K; k++){
+				trnModel.theta[m][k] = (trnModel.nd[m][k] + trnModel.alpha) / (trnModel.ndsum[m] + trnModel.K * trnModel.alpha);
+			}
+		}
+	}
+	
+	public void computePhi() {
+		for (int l = 0; l < trnModel.L; l++) {
+			for (int k = 0; k < trnModel.K; k++) {
+				for (int w = 0; w < trnModel.V[l]; w++) {
+					trnModel.phi[l][k][w] = (trnModel.nw[l][w][k] + trnModel.beta)
+							/ (trnModel.nwsum[l][k] + trnModel.V[l]
+									* trnModel.beta);
+				}
+			}
+		}
+
+	}
+}

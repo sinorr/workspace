@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<launchConfiguration type="org.eclipse.jdt.launching.localJavaApplication">
+<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
+<listEntry value="/jpolylda/src/jpolylda/LDA.java"/>
+</listAttribute>
+<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
+<listEntry value="1"/>
+</listAttribute>
+<stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="jpolylda.LDA"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="-dir /home/cyno/flowdata/codeblocks/jpolylda/test -dfile newdocs -est -ntopics 10 -niters 30 -nlans 2 -langs en&amp;vi"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="jpolylda"/>
+</launchConfiguration>
